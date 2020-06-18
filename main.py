@@ -336,48 +336,54 @@ def posProcessLabels(predictions):
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 
 
+center1 = pd.read_csv("center1.csv")
+center2 = pd.read_csv("center2.csv")
+center3 = pd.read_csv("center3.csv")
+center4 = pd.read_csv("center4.csv")
+center5 = pd.read_csv("center5.csv")
+center6 = pd.read_csv("center6.csv")
+X_train = pd.read_csv("X_train.csv")
+
+
+
+center1 = center1.iloc[:,1:9] 
+center2 = center2.iloc[:,1:9] 
+center3 = center3.iloc[:,1:9] 
+center4 = center4.iloc[:,1:9] 
+center5 = center5.iloc[:,1:9] 
+center6 = center6.iloc[:,1:9] 
+
+X_train = X_train.iloc[:,1:9] 
 
 
 
 
-y_train = np.array(dataY)
-encoder = LabelEncoder()
-encoder.fit(y_train)
-encoded_Y = encoder.transform(y_train)
-dummy_y = np_utils.to_categorical(encoded_Y)
-estimator = trainFeedForwardNetwork(X_train,dummy_y)
+
+
+# y_train = np.array(dataY)
+# encoder = LabelEncoder()
+# encoder.fit(y_train)
+# encoded_Y = encoder.transform(y_train)
+# dummy_y = np_utils.to_categorical(encoded_Y)
+# estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 
-responses_label = []
-predict_vector = []
+# responses_label = []
+# predict_vector = []
 
 
-test_FilteredX = []
 
-test_samples = user['testingSamples']
+# test_samples = user['testingSamples']
+# sample = test_samples['fist']['sample5']['emg']
+# df_test = pd.DataFrame.from_dict(sample)
 
-sample = test_samples['pinch']['sample5']['emg']
-df_test = pd.DataFrame.from_dict(sample)
-# df = df_test.apply(preProcessEMGSegment)
+# vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
+# predicted_label = posProcessLabels(prediq_seq)
 
-# if segmentation == True:
-#     df_sum  = df.sum(axis=1)
-#     idx_Start, idx_End = detectMuscleActivity(df_sum)
-# else:
-#     idx_Start = 0;
-#     idx_End = len(df)
-    
-# df_seg = df.iloc[idx_Start:idx_End]   
-# test_FilteredX.append(df_seg)
-
-vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
-
-predicted_label = posProcessLabels(prediq_seq)
-
-print(predicted_label)
-responses_label.append(predicted_label)
-predict_vector.append(prediq_seq) 
+# print(predicted_label)
+# responses_label.append(predicted_label)
+# predict_vector.append(prediq_seq) 
 
 
 
