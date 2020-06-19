@@ -29,7 +29,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from sklearn.preprocessing import LabelEncoder
 from keras.utils import np_utils
-
+from keras.optimizers import Adam, SGD
 
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
@@ -199,14 +199,15 @@ def preProcessFeatureVector(dataX_in):
     return dataX6
 
 
-def trainFeedForwardNetwork(X_train,y_train):
+def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     
     classifier = Sequential()
+    
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = None, input_dim = 6))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 20,  epochs = 600)
+    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1200, validation_data = (X_test, y_test),verbose = 0 )
     
     return classifier
 
@@ -242,14 +243,14 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             
             tStart = time.time()
             
-            filt_window_emg = window_emg.apply(preProcessEMGSegment)
-            window_emg = filt_window_emg.loc[idx_start:idx_end]
+            filt_window_emg1 = window_emg.apply(preProcessEMGSegment)
+            window_emg1 = filt_window_emg1.iloc[idx_start:idx_end]
             
             
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            featVector = featureExtraction([window_emg], centers)
+            featVector = featureExtraction([window_emg1], centers)
             featVectorP = preProcessFeatureVector(featVector)
             t_featExtra =  time.time() - tStart
             
@@ -273,7 +274,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_classiNN = 0
             t_threshNN = 0
             predicted_labelNN = 1
-           #print('1')
+            #print('1')
             
             
         count = count + 1
@@ -282,7 +283,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
         
         
-    return vecTime, timeSeq, predLabel_seq   
+    return  predLabel_seq, vecTime, timeSeq
 
 
 
@@ -295,10 +296,11 @@ def unique(list1):
     return unique_list 
 
 
-def posProcessLabels(predictions):
+def post_ProcessLabels(predicted_Seq):
     
+    predictions = predicted_Seq
     predictions[0] = 1
-    postProcessedLabels = predictions
+    postProcessed_Labels = predictions
         
     for i in range(1,len(predictions)):
         
@@ -307,9 +309,9 @@ def posProcessLabels(predictions):
         else:    
             cond = 0
             
-        postProcessedLabels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
+        postProcessed_Labels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
             
-    uniqueLabels = unique(postProcessedLabels)
+    uniqueLabels = unique(postProcessed_Labels)
     
     an_iterator = filter(lambda number: number != 1, uniqueLabels)
     uniqueLabelsWithoutRest = list(an_iterator)
@@ -355,21 +357,37 @@ center6 = center6.iloc[:,1:9]
 
 
 centers = [center1, center2, center3, center4, center5, center6] 
-X_train = X_train.iloc[:,1:9] 
+X_train1 = X_train.iloc[:,1:9]
+y_train = np.array(dataY) 
+
+dataX = X_train.iloc[:,1:9]
+dataX['6'] = y_train
+
+Xx_train = dataX.sample(frac=1).reset_index(drop=True)
+Xx_train1 = Xx_train.iloc[:,0:6] 
+
+
+Yy_train = Xx_train['6']
 
 
 
-sc = StandardScaler()
 
 
 
-
-y_train = np.array(dataY)
 encoder = LabelEncoder()
 encoder.fit(y_train)
 encoded_Y = encoder.transform(y_train)
 dummy_y = np_utils.to_categorical(encoded_Y)
-estimator = trainFeedForwardNetwork(X_train,dummy_y)
+
+
+encoder = LabelEncoder()
+encoder.fit(Yy_train)
+encoded_Y = encoder.transform(Yy_train)
+Yy_train = np_utils.to_categorical(encoded_Y)
+
+
+estimator = trainFeedForwardNetwork(X_train1, dummy_y, Xx_train1, Yy_train)
+
 
 
 
@@ -377,17 +395,18 @@ responses_label = []
 predict_vector = []
 
 
+
 for i in range(1,26):
     test_samples = user['testingSamples']
     sample = test_samples['fist']['sample%s' %i]['emg']
     df_test = pd.DataFrame.from_dict(sample)
     
-    vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
-    predicted_label = posProcessLabels(prediq_seq)
+    [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
+    predicted_label = post_ProcessLabels(predictedSeq)
     
-    print(prediq_seq)
-    responses_label.append(predicted_label)
-    predict_vector.append(prediq_seq) 
+    print(predictedSeq)
+    #responses_label.append(predicted_label)
+    #predict_vector.append(prediq_seq) 
 
 
 
