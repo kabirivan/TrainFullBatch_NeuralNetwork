@@ -41,7 +41,8 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 
 
-
+import random
+from sklearn.preprocessing import StandardScaler
 
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
@@ -187,7 +188,7 @@ def featureExtraction(emg_filtered, centers):
     
     return dataX
 
-def preProcessFeautureVector(dataX_in):
+def preProcessFeatureVector(dataX_in):
     
     dataX_mean = dataX_in.mean(axis = 1)
     dataX_std = dataX_in.std(axis = 1)   
@@ -205,16 +206,15 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = len(X_train), validation_split= 0.3 ,epochs = 1000)
+    classifier.fit(X_train, y_train, batch_size = 20,  epochs = 600)
     
     return classifier
 
 
 
 
-
 def classifyEMG_SegmentationNN(dataX_test, centers, model):
-    
+    sc = StandardScaler()
     window_length = 500
     stride_length = 10
     emg_length = len(dataX_test)
@@ -250,11 +250,11 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             
             tStart = time.time()
             featVector = featureExtraction([window_emg], centers)
-            featVectorP = preProcessFeautureVector(featVector)
+            featVectorP = preProcessFeatureVector(featVector)
             t_featExtra =  time.time() - tStart
             
             tStart = time.time()
-            x = model.predict(featVectorP).tolist()
+            x = model.predict_proba(featVectorP).tolist()
             probNN = x[0]
             max_probNN = max(probNN)
             predicted_labelNN = probNN.index(max_probNN) + 1
@@ -351,72 +351,77 @@ center2 = center2.iloc[:,1:9]
 center3 = center3.iloc[:,1:9] 
 center4 = center4.iloc[:,1:9] 
 center5 = center5.iloc[:,1:9] 
-center6 = center6.iloc[:,1:9] 
+center6 = center6.iloc[:,1:9]
 
+
+centers = [center1, center2, center3, center4, center5, center6] 
 X_train = X_train.iloc[:,1:9] 
 
 
 
+sc = StandardScaler()
 
 
 
-# y_train = np.array(dataY)
-# encoder = LabelEncoder()
-# encoder.fit(y_train)
-# encoded_Y = encoder.transform(y_train)
-# dummy_y = np_utils.to_categorical(encoded_Y)
-# estimator = trainFeedForwardNetwork(X_train,dummy_y)
+
+y_train = np.array(dataY)
+encoder = LabelEncoder()
+encoder.fit(y_train)
+encoded_Y = encoder.transform(y_train)
+dummy_y = np_utils.to_categorical(encoded_Y)
+estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 
-# responses_label = []
-# predict_vector = []
+responses_label = []
+predict_vector = []
+
+
+for i in range(1,26):
+    test_samples = user['testingSamples']
+    sample = test_samples['fist']['sample%s' %i]['emg']
+    df_test = pd.DataFrame.from_dict(sample)
+    
+    vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
+    predicted_label = posProcessLabels(prediq_seq)
+    
+    print(prediq_seq)
+    responses_label.append(predicted_label)
+    predict_vector.append(prediq_seq) 
 
 
 
+
+
+
+
+# test_FilteredX = []
 # test_samples = user['testingSamples']
-# sample = test_samples['fist']['sample5']['emg']
-# df_test = pd.DataFrame.from_dict(sample)
-
-# vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
-# predicted_label = posProcessLabels(prediq_seq)
-
-# print(predicted_label)
-# responses_label.append(predicted_label)
-# predict_vector.append(prediq_seq) 
-
-
-
+# segmentation = True
 
 # for move in gestures:   
-#     for i in range(1,6):
+#     for i in range(1,11):
 #         sample = test_samples[move]['sample%s' %i]['emg']
 #         df_test = pd.DataFrame.from_dict(sample)
-#         # df = df_test.apply(preProcessEMGSegment)
+#         df = df_test.apply(preProcessEMGSegment)
         
-#         # if segmentation == True:
-#         #     df_sum  = df.sum(axis=1)
-#         #     idx_Start, idx_End = detectMuscleActivity(df_sum)
-#         # else:
-#         #     idx_Start = 0;
-#         #     idx_End = len(df)
+#         if segmentation == True:
+#             df_sum  = df.sum(axis=1)
+#             idx_Start, idx_End = detectMuscleActivity(df_sum)
+#         else:
+#             idx_Start = 0;
+#             idx_End = len(df)
             
-#         # df_seg = df.iloc[idx_Start:idx_End]   
-#         # test_FilteredX.append(df_seg)
-    
-#         vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
-    
-#         predicted_label = posProcessLabels(prediq_seq)
+#         df_seg = df.iloc[idx_Start:idx_End]   
+#         test_FilteredX.append(df_seg)
+            
         
-#         print(predicted_label)
-#         responses_label.append(predicted_label)
-#         predict_vector.append(prediq_seq) 
-        
-        
-        
-    
+ 
+# data_Y = list(itertools.chain.from_iterable(itertools.repeat(x, 10) for x in range(1,len(gestures)+1)))
+# y_test = np.array(data_Y)        
+ 
 # X_te = featureExtraction(test_FilteredX, centers) 
-# X_test = preProcessFeautureVector(X_te)
+# X_test = preProcessFeatureVector(X_te)
 
 # results = estimator.predict(X_test).tolist()   
 
@@ -428,11 +433,8 @@ X_train = X_train.iloc[:,1:9]
 #     res.append(predicted_labelNN)
 
 
-# cm = confusion_matrix(dataY, res)
-# f = sns.heatmap(cm, annot=True)
 
-
-# score =  accuracy_score(dataY, res) 
+# score =  accuracy_score(y_test, res) 
 
 # percentage = "{:.2%}".format(score)
 # print(percentage)
