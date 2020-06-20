@@ -44,6 +44,11 @@ from sklearn.metrics import accuracy_score
 import random
 from sklearn.preprocessing import StandardScaler
 
+
+
+from collections import Counter
+
+
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
 #gestures = ['noGesture', 'fist']
@@ -296,11 +301,37 @@ def unique(list1):
     return unique_list 
 
 
+
+def majorite_vote(data, before, after):
+    
+    votes =[0,0,0,0,0,0]
+    class_maj = []
+        
+    for j in range(0,len(data)):
+        wind_mv = data[max(0,(j-before)):min(len(data),(j+after))]
+        
+        for k in range(0, len(gestures)):
+            a = [1 if i == k+1 else 0 for i in wind_mv]  
+            votes[k] = sum(a)
+            
+        findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
+        idx_label = findNumber(max(votes),votes)
+        class_maj.append( idx_label[0] + 1)
+        
+    
+    return class_maj
+
+
+
+
+
 def post_ProcessLabels(predicted_Seq):
     
-    predictions = predicted_Seq
+    vec = predicted_Seq.copy()
+    pred = majorite_vote(vec, 4, 4)
+    predictions = pred.copy()
     predictions[0] = 1
-    postProcessed_Labels = predictions
+    postProcessed_Labels = predictions.copy()
         
     for i in range(1,len(predictions)):
         
@@ -329,7 +360,11 @@ def post_ProcessLabels(predicted_Seq):
             finalLabel = uniqueLabelsWithoutRest[0]
                    
     
-    return finalLabel
+    return finalLabel, pred
+
+
+
+
 
 
 
@@ -394,7 +429,7 @@ estimator = trainFeedForwardNetwork(X_train1, dummy_y, Xx_train1, Yy_train)
 responses_label = []
 predict_vector = []
 
-
+#%% Samples
 
 for i in range(1,26):
     test_samples = user['testingSamples']
@@ -402,15 +437,26 @@ for i in range(1,26):
     df_test = pd.DataFrame.from_dict(sample)
     
     [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
-    predicted_label = post_ProcessLabels(predictedSeq)
+    #print("Before: ", predictedSeq)
+       
+    # class_post = majorite_vote(predictedSeq, 4, 4)
+                     
+    #print("Post: ", class_post)        
+    predicted_label, post_Seq = post_ProcessLabels(predictedSeq)
     
-    print(predictedSeq)
+    print("After: ", post_Seq)
+
+    print("Result: ", predicted_label)
     #responses_label.append(predicted_label)
     #predict_vector.append(prediq_seq) 
+    
+    
+    
+    
+    
+    
 
-
-
-
+#%%
 
 
 
