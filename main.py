@@ -154,7 +154,6 @@ def detectMuscleActivity(emg_sum):
 def findCentersClass(emg_filtered,sample):
     distances = []
     column = np.arange(0,sample)
-    #column = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']
     mtx_distances = pd.DataFrame(columns = column)
     mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
     
@@ -217,6 +216,25 @@ def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     return classifier
 
 
+def majorite_vote(data, before, after):
+    
+    votes =[0,0,0,0,0,0]
+    class_maj = []
+        
+    for j in range(0,len(data)):
+        wind_mv = data[max(0,(j-before)):min(len(data),(j+after))]
+        
+        for k in range(0, len(gestures)):
+            a = [1 if i == k+1 else 0 for i in wind_mv]  
+            votes[k] = sum(a)
+            
+        findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
+        idx_label = findNumber(max(votes),votes)
+        class_maj.append( idx_label[0] + 1)
+        
+    
+    return class_maj
+
 
 
 def classifyEMG_SegmentationNN(dataX_test, centers, model):
@@ -244,7 +262,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         idx_start, idx_end = detectMuscleActivity(window_sum)
         t_acq = time.time()-tStart
         
-        if idx_start != 1 & idx_end != len(window_emg):
+        if (idx_start != 1) & (idx_end != len(window_emg)) & ((idx_end - idx_start) > 125):
             
             tStart = time.time()
             
@@ -286,9 +304,10 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         predLabel_seq.append(predicted_labelNN)
         vecTime.append(start_point)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
+    
+    pred_seq = majorite_vote(predLabel_seq, 4, 4)    
         
-        
-    return  predLabel_seq, vecTime, timeSeq
+    return  pred_seq, vecTime, timeSeq
 
 
 
@@ -302,46 +321,30 @@ def unique(list1):
 
 
 
-def majorite_vote(data, before, after):
-    
-    votes =[0,0,0,0,0,0]
-    class_maj = []
-        
-    for j in range(0,len(data)):
-        wind_mv = data[max(0,(j-before)):min(len(data),(j+after))]
-        
-        for k in range(0, len(gestures)):
-            a = [1 if i == k+1 else 0 for i in wind_mv]  
-            votes[k] = sum(a)
-            
-        findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
-        idx_label = findNumber(max(votes),votes)
-        class_maj.append( idx_label[0] + 1)
-        
-    
-    return class_maj
-
-
 
 
 
 def post_ProcessLabels(predicted_Seq):
     
-    vec = predicted_Seq.copy()
-    pred = majorite_vote(vec, 4, 4)
-    predictions = pred.copy()
+    time_post = []
+    predictions = predicted_Seq.copy()
     predictions[0] = 1
     postProcessed_Labels = predictions.copy()
         
     for i in range(1,len(predictions)):
+        
+        tStart = time.time()
         
         if predictions[i] == predictions[i-1]:
             cond = 1
         else:    
             cond = 0
             
-        postProcessed_Labels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
-            
+        postProcessed_Labels[i] =  (1 * cond) + (predictions[i]* (1 - cond))
+        t_post = time.time() - tStart
+        time_post.append(t_post)
+        
+    time_post.insert(0,time_post[0])     
     uniqueLabels = unique(postProcessed_Labels)
     
     an_iterator = filter(lambda number: number != 1, uniqueLabels)
@@ -360,7 +363,7 @@ def post_ProcessLabels(predicted_Seq):
             finalLabel = uniqueLabelsWithoutRest[0]
                    
     
-    return finalLabel, pred
+    return finalLabel, time_post
 
 
 
@@ -426,33 +429,27 @@ estimator = trainFeedForwardNetwork(X_train1, dummy_y, Xx_train1, Yy_train)
 
 
 
-responses_label = []
-predict_vector = []
+vector_class = []
+vector_TimePoints = []
+vector_labels = []
+vector_ProcessingTimes = []
 
 #%% Samples
 
 for i in range(1,26):
+    
     test_samples = user['testingSamples']
     sample = test_samples['fist']['sample%s' %i]['emg']
     df_test = pd.DataFrame.from_dict(sample)
     
     [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
-    #print("Before: ", predictedSeq)
-       
-    # class_post = majorite_vote(predictedSeq, 4, 4)
-                     
-    #print("Post: ", class_post)        
-    predicted_label, post_Seq = post_ProcessLabels(predictedSeq)
+    predicted_label, t_post = post_ProcessLabels(predictedSeq)
+    estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
     
-    print("After: ", post_Seq)
-
-    print("Result: ", predicted_label)
-    #responses_label.append(predicted_label)
-    #predict_vector.append(prediq_seq) 
-    
-    
-    
-    
+    vector_class.append(predicted_label)
+    vector_labels.append(predictedSeq)
+    vector_TimePoints.append(vec_time)  
+    vector_ProcessingTimes.append(estimatedTime) 
     
     
 
@@ -482,27 +479,7 @@ for i in range(1,26):
             
         
  
-# data_Y = list(itertools.chain.from_iterable(itertools.repeat(x, 10) for x in range(1,len(gestures)+1)))
-# y_test = np.array(data_Y)        
- 
-# X_te = featureExtraction(test_FilteredX, centers) 
-# X_test = preProcessFeatureVector(X_te)
 
-# results = estimator.predict(X_test).tolist()   
-
-# res = []
-
-# for item in results: 
-#     max_probNN = max(item)
-#     predicted_labelNN = item.index(max_probNN) + 1
-#     res.append(predicted_labelNN)
-
-
-
-# score =  accuracy_score(y_test, res) 
-
-# percentage = "{:.2%}".format(score)
-# print(percentage)
 
 
 
