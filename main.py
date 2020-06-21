@@ -302,7 +302,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             
         count = count + 1
         predLabel_seq.append(predicted_labelNN)
-        vecTime.append(start_point)
+        vecTime.append(start_point+(window_length/2)+50)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
     
     pred_seq = majorite_vote(predLabel_seq, 4, 4)    
@@ -452,31 +452,6 @@ for i in range(1,26):
     vector_ProcessingTimes.append(estimatedTime) 
     
     
-
-#%%
-
-
-
-# test_FilteredX = []
-# test_samples = user['testingSamples']
-# segmentation = True
-
-# for move in gestures:   
-#     for i in range(1,11):
-#         sample = test_samples[move]['sample%s' %i]['emg']
-#         df_test = pd.DataFrame.from_dict(sample)
-#         df = df_test.apply(preProcessEMGSegment)
-        
-#         if segmentation == True:
-#             df_sum  = df.sum(axis=1)
-#             idx_Start, idx_End = detectMuscleActivity(df_sum)
-#         else:
-#             idx_Start = 0;
-#             idx_End = len(df)
-            
-#         df_seg = df.iloc[idx_Start:idx_End]   
-#         test_FilteredX.append(df_seg)
-            
         
  
 
