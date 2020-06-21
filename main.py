@@ -410,8 +410,6 @@ Yy_train = Xx_train['6']
 
 
 
-
-
 encoder = LabelEncoder()
 encoder.fit(y_train)
 encoded_Y = encoder.transform(y_train)
@@ -425,8 +423,6 @@ Yy_train = np_utils.to_categorical(encoded_Y)
 
 
 estimator = trainFeedForwardNetwork(X_train1, dummy_y, Xx_train1, Yy_train)
-
-
 
 
 vector_class = []
