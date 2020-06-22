@@ -45,7 +45,7 @@ import random
 from sklearn.preprocessing import StandardScaler
 
 
-
+import collections
 from collections import Counter
 
 
@@ -432,7 +432,7 @@ vector_ProcessingTimes = []
 
 #%% Samples
 
-for i in range(1,26):
+for i in range(1,5):
     
     test_samples = user['testingSamples']
     sample = test_samples['fist']['sample%s' %i]['emg']
@@ -450,21 +450,29 @@ for i in range(1,26):
     
         
  
+df_res = pd.DataFrame(vector_labels) 
 
 
 
 
 
+#%%
+
+import collections
+d = collections.defaultdict(dict)
+d['user1']['vectorOfClass'] = vector_class
+d['user1']['vectorOfLabels'] = vector_labels
+d['user1']['vectorOfTimePoints'] = vector_TimePoints
+d['user1']['vectorOfProcessingTimes']= vector_ProcessingTimes
 
 
 
 
+test = collections.defaultdict(dict)
+
+test['testing'] = d
 
 
-
-
-
-
-
-
+with open('person.txt', 'w') as json_file:
+  json.dump(test, json_file)
 
