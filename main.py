@@ -466,6 +466,12 @@ d['user1']['vectorOfTimePoints'] = vector_TimePoints
 d['user1']['vectorOfProcessingTimes']= vector_ProcessingTimes
 
 
+d['user2']['vectorOfClass'] = vector_class
+d['user2']['vectorOfLabels'] = vector_labels
+d['user2']['vectorOfTimePoints'] = vector_TimePoints
+d['user2']['vectorOfProcessingTimes']= vector_ProcessingTimes
+
+
 
 
 test = collections.defaultdict(dict)
